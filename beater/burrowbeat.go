@@ -17,14 +17,14 @@ import (
 )
 
 type Burrowbeat struct {
-	done       chan struct{}
-	config     config.Config
-	client     publisher.Client
+	done   chan struct{}
+	config config.Config
+	client publisher.Client
 
-	host	   string
-	port       string
-	cluster    string
-	groups     []string
+	host    string
+	port    string
+	cluster string
+	groups  []string
 }
 
 // Creates beater
@@ -35,7 +35,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	}
 
 	bt := &Burrowbeat{
-		done: make(chan struct{}),
+		done:   make(chan struct{}),
 		config: config,
 	}
 	return bt, nil
@@ -57,8 +57,30 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 		case <-ticker.C:
 		}
 
-		for _, group := range bt.groups {
-			endpoint := "http://" + bt.host + ":" + bt.port + "/v2/kafka/" + bt.cluster + "/consumer/" + group + "/lag"
+		logp.Debug("main", "Running tick")
+		groups := bt.groups
+		endpoint_base := "http://" + bt.host + ":" + bt.port + "/v2/kafka/" + bt.cluster
+		if len(groups) == 0 {
+			endpoint := endpoint_base + "/consumer"
+			resp, err := http.Get(endpoint)
+			if err != nil {
+				fmt.Errorf("Error during http GET: %v", err)
+			}
+			var burrow_groups map[string]interface{}
+			out, _ := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+
+			if err = json.Unmarshal(out, &burrow_groups); err != nil {
+				fmt.Errorf("Error during unmarshal: %v", err)
+			} else {
+				for _, group := range burrow_groups["consumers"].([]interface{}) {
+					groups = append(groups, group.(string))
+				}
+			}
+		}
+
+		for _, group := range groups {
+			endpoint := endpoint_base + "/consumer/" + group + "/lag"
 			resp, err := http.Get(endpoint)
 			if err != nil {
 				fmt.Errorf("Error during http GET: %v", err)
@@ -86,21 +108,29 @@ func (bt *Burrowbeat) Stop() {
 func (bt *Burrowbeat) getConsumerGroupStatus(burrow map[string]interface{}) {
 	status := burrow["status"].(map[string]interface{})
 	group := status["group"].(string)
-	total_partitions := int(status["partition_count"].(float64))
-        total_lag := int(status["totallag"].(float64))
+	partitions := status["partitions"].([]interface{})
+	for _, partition := range partitions {
+		partition := partition.(map[string]interface{})
+		offset := partition["end"].(map[string]interface{})
 
-	event := common.MapStr {
-		"@timestamp":		common.Time(time.Now()),
-		"type":			"consumer_group",
-		"count":		1,
-		"cluster":		bt.cluster,
-		"group":		group,
-		"total_partitions":	total_partitions,
-		"total_lag":		total_lag,
-		"burrow_status":	status,
+		consumer_group := common.MapStr{
+			"name":      group,
+			"topic":     partition["topic"].(string),
+			"partition": int(partition["partition"].(float64)),
+			"offset":    int64(offset["offset"].(float64)),
+			"lag":       int64(offset["lag"].(float64)),
+		}
+
+		event := common.MapStr{
+			"@timestamp":     common.Time(time.Now()),
+			"type":           "consumer_group",
+			"cluster":        bt.cluster,
+			"consumer_group": consumer_group,
+		}
+
+		bt.client.PublishEvent(event)
 	}
-	bt.client.PublishEvent(event)
-	logp.Info("Consumer group event sent")
+	logp.Info("Consumer group events sent")
 }
 
 func (bt *Burrowbeat) getTopicStatuses(burrow map[string]interface{}) {
@@ -135,25 +165,24 @@ func (bt *Burrowbeat) getTopicStatuses(burrow map[string]interface{}) {
 				topic_sizes[current_topic] += tmp_offset
 				topic_partitions[current_topic] += 1
 				topic_lags[current_topic] += tmp_lag
-			 }
+			}
 		}
 	}
 
 	for i, name := range topic_names {
-		topic := common.MapStr {
-			"name":		name,
-			"size":		topic_sizes[i],
-			"partitions":	topic_partitions[i],
-			"lag":		topic_lags[i],
+		topic := common.MapStr{
+			"name":       name,
+			"size":       topic_sizes[i],
+			"partitions": topic_partitions[i],
+			"lag":        topic_lags[i],
 		}
 
-		event := common.MapStr {
-			"@timestamp":	common.Time(time.Now()),
-			"type":		"topic",
-			"count":	1,
-			"cluster":	bt.cluster,
-			"group":	group,
-			"topic":	topic,
+		event := common.MapStr{
+			"@timestamp": common.Time(time.Now()),
+			"type":       "topic",
+			"cluster":    bt.cluster,
+			"group":      group,
+			"topic":      topic,
 		}
 		bt.client.PublishEvent(event)
 		logp.Info("Topic event sent")

@@ -2,7 +2,9 @@
   "mappings": {
     "_default_": {
       "_all": {
-        "norms": false
+        "norms": {
+          "enabled": false
+        }
       },
       "_meta": {
         "version": "5.5.1"
@@ -13,7 +15,8 @@
           "strings_as_keyword": {
             "mapping": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "index": "not_analyzed",
+              "type": "string"
             },
             "match_mapping_type": "string"
           }
@@ -27,29 +30,35 @@
           "properties": {
             "hostname": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "index": "not_analyzed",
+              "type": "string"
             },
             "name": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "index": "not_analyzed",
+              "type": "string"
             },
             "version": {
               "ignore_above": 1024,
-              "type": "keyword"
+              "index": "not_analyzed",
+              "type": "string"
             }
           }
         },
         "cluster": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         },
         "consumer_group": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         },
         "group": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         },
         "meta": {
           "properties": {
@@ -57,27 +66,33 @@
               "properties": {
                 "availability_zone": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 },
                 "instance_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 },
                 "machine_type": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 },
                 "project_id": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 },
                 "provider": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 },
                 "region": {
                   "ignore_above": 1024,
-                  "type": "keyword"
+                  "index": "not_analyzed",
+                  "type": "string"
                 }
               }
             }
@@ -85,22 +100,24 @@
         },
         "tags": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         },
         "topic": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         },
         "type": {
           "ignore_above": 1024,
-          "type": "keyword"
+          "index": "not_analyzed",
+          "type": "string"
         }
       }
     }
   },
   "order": 0,
   "settings": {
-    "index.mapping.total_fields.limit": 10000,
     "index.refresh_interval": "5s"
   },
   "template": "burrowbeat-*"

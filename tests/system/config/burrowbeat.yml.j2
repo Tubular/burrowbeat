@@ -2,20 +2,18 @@
 
 burrowbeat:
   period: {{ period | default(0.1) }}
-  host: {{ host | default("bklise.goomzee.com") }}
+  host: {{ host | default("localhost") }}
   port: {{ port | default("8000") }}
   cluster: {{ cluster | default("local") }}
 
-    {% if groups | length > 0 %}
+{% if groups | length > 0 %}
   groups:
     {% for item in groups -%}
       - {{ item }}
     {%- endfor %}
-    {% else %}
-  groups:
-    - "test_group"
-    {% endif %}
-
+{% else %}
+  groups: []
+{% endif %}
 
 ############################# Output ##########################################
 
@@ -29,12 +27,12 @@ output:
     enabled: true
 
     # Path to the directory where to save the generated files. The option is mandatory.
-    path: "{{ output_file_path|default(burrowbeat.working_dir + "/output") }}"
+    path: {{ '{{' }} output_file_path|default(beat.working_dir + "/output") {{ '}}' }}
 
 
     # Name of the generated files. The default is `burrowbeat` and it generates
     # files: `burrowbeat`, `burrowbeat.1`, `burrowbeat.2`, etc.
-    filename: "{{ output_file_filename|default("burrowbeat") }}"
+    filename: "{{ '{{' }} output_file_filename|default("burrowbeat") {{ '}}' }}"
 
     # Maximum size in kilobytes of each file. When this size is reached, the files are
     # rotated. The default value is 10 MB.
@@ -47,23 +45,18 @@ output:
 
 
 
-############################# Shipper #########################################
+############################# Beat #########################################
 
-shipper:
-  # The name of the shipper that publishes the network data. It can be used to group
-  # all the transactions sent by a single shipper in the web interface.
-  # If this options is not defined, the hostname is used.
-  name: "burrowbeat"
+# The name of the shipper that publishes the network data. It can be used to group
+# all the transactions sent by a single shipper in the web interface.
+# If this options is not defined, the hostname is used.
+#name:
 
-  # The tags of the shipper are included in their own field with each
-  # transaction published. Tags make it easy to group servers by different
-  # logical properties.
-  #tags: ["service-X", "web-tier"]
+# The tags of the shipper are included in their own field with each
+# transaction published. Tags make it easy to group servers by different
+# logical properties.
+#tags: ["service-X", "web-tier"]
 
-  # Uncomment the following if you want to ignore transactions created
-  # by the server on which the shipper is installed. This option is useful
-  # to remove duplicates if shippers are installed on multiple servers.
-  #ignore_outgoing: true
 
 
 ############################# Logging #########################################

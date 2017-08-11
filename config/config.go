@@ -18,5 +18,5 @@ var DefaultConfig = Config{
 	Host: "bklise.goomzee.com",
 	Port: "8000",
 	Cluster: "local",
-	Groups: []string{"test_group"},
+	Groups: []string{},
 }

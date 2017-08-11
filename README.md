@@ -3,14 +3,13 @@
 Welcome to Burrowbeat.
 
 Ensure that this folder is at the following location:
-`${GOPATH}/github.com/goomzee`
+`${GOPATH}/github.com/goomzee/burrowbeat`
 
 ## Getting Started with Burrowbeat
 
 ### Requirements
 
-* [Golang](https://golang.org/dl/) 1.6.2
-
+* [Golang](https://golang.org/dl/) 1.7
 
 ### Init Project
 To get running with Burrowbeat and also install the
@@ -31,7 +30,6 @@ git push origin master
 
 For further development, check out the [beat developer guide](https://www.elastic.co/guide/en/beats/libbeat/current/new-beat.html).
 
-
 ### Build
 
 To build the binary for Burrowbeat run the command below. This will generate a binary
@@ -49,7 +47,6 @@ To run Burrowbeat with debugging output enabled, run:
 ```
 ./burrowbeat -c burrowbeat.yml -e -d "*"
 ```
-
 
 ### Exported fields
 
@@ -70,10 +67,13 @@ Consumer group:
     "type": "consumer_group",
     "count": 1,
     "cluster": "cluster_name",
-    "group": "consumer_group_name",
-    "total_partitions": 2,
-    "total_lag": 0,
-    "burrow_status": {}
+    "consumer_group": {
+         "name": "consumer_group_name",
+         "offset": 0,
+         "lag": 0,
+         "partition": 11,
+         "topic": "topic_name"
+    }
 }
 </pre>
 
@@ -98,43 +98,25 @@ Topic:
         "lag": 0
      }
 }
-</pre>
-
+-</pre>
 
 ### Test
 
-From $GOPATH/src/github.com/goomzee/burrowbeat:
+To test Burrowbeat, run the following command:
 
-1. Prepare and build python environment
-   ```
-   make python-env
-   ```
+```
+make testsuite
+```
 
-2. Activate python test environment
-   ```
-   source build/python-env/bin/activate
-   ```
+alternatively:
+```
+make unit-tests
+make system-tests
+make integration-tests
+make coverage-report
+```
 
-3. Build test-beat. Creates a `cassandrabeat.test` binary.
-   ```
-   make buildbeat.test
-   ```
-
-4. Go to tests/system
-   ```
-   cd tests/system
-   ```
-
-5. Run nosetests (`-x` = stop on first failure, `-v` = verbose)
-   ```
-   nosetests --with-timer -v -x test_consumer.py
-   ```
-
-6. Deactivate python environment
-   ```
-   deactivate
-   ```
-
+The test coverage is reported in the folder `./build/coverage/`
 
 ### Update
 

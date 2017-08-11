@@ -1,0 +1,11 @@
+################### Burrowbeat Configuration Example #########################
+
+############################# Burrowbeat ######################################
+
+burrowbeat:
+  # Defines how often an event is sent to the output
+  period: 10s
+  host: "localhost"
+  port: "8000"
+  cluster: "local"
+  groups: []
