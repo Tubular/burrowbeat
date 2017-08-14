@@ -44,8 +44,25 @@
           "type": "keyword"
         },
         "consumer_group": {
-          "ignore_above": 1024,
-          "type": "keyword"
+          "properties": {
+            "lag": {
+              "type": "long"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "offset": {
+              "type": "long"
+            },
+            "partition": {
+              "type": "long"
+            },
+            "topic": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
         },
         "group": {
           "ignore_above": 1024,
@@ -88,8 +105,21 @@
           "type": "keyword"
         },
         "topic": {
-          "ignore_above": 1024,
-          "type": "keyword"
+          "properties": {
+            "lag": {
+              "type": "long"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "partition": {
+              "type": "long"
+            },
+            "size": {
+              "type": "long"
+            }
+          }
         },
         "type": {
           "ignore_above": 1024,

@@ -96,7 +96,44 @@ required: True
 Cluster for wich stats gathered
 
 [float]
-=== consumer_group
+=== consumer_group.name
+
+type: keyword
+
+Name of consumer group
+
+
+[float]
+=== consumer_group.topic
+
+type: keyword
+
+Topic from which consumes consumer group
+
+
+[float]
+=== consumer_group.partition
+
+type: integer
+
+Partition of topic
+
+
+[float]
+=== consumer_group.lag
+
+type: long
+
+Difference beetwen consumer group and topic offset
+
+
+[float]
+=== consumer_group.offset
+
+type: long
+
+Current offset of consumer group on partiotion of topic
+
 
 [float]
 === group
@@ -104,7 +141,36 @@ Cluster for wich stats gathered
 type: keyword
 
 [float]
-=== topic
+=== topic.name
+
+type: keyword
+
+Name of topic
+
+
+[float]
+=== topic.lag
+
+type: long
+
+Total lag for topic
+
+
+[float]
+=== topic.partition
+
+type: integer
+
+Num of partition on topic
+
+
+[float]
+=== topic.size
+
+type: long
+
+Amount of messages in topic
+
 
 [[exported-fields-cloud]]
 == Cloud Provider Metadata Fields

@@ -13,58 +13,52 @@
       required: true
       description: Cluster for wich stats gathered
 
-    - name: consumer_group
-      type: dict
-      fields:
-        - name: name
-          type: keyword
-          description: >
-            Name of consumer group
+    - name: consumer_group.name
+      type: keyword
+      description: >
+        Name of consumer group
 
-        - name: topic
-          type: keyword
-          description: >
-            Topic from which consumes consumer group
+    - name: consumer_group.topic
+      type: keyword
+      description: >
+        Topic from which consumes consumer group
 
-        - name: partition
-          type: integer
-          description: >
-            Partition of topic
+    - name: consumer_group.partition
+      type: integer
+      description: >
+        Partition of topic
 
-        - name: lag
-          type: long
-          description: >
-            Difference beetwen consumer group and topic offset
+    - name: consumer_group.lag
+      type: long
+      description: >
+        Difference beetwen consumer group and topic offset
 
-        - name: offset
-          type: long
-          description: >
-            Current offset of consumer group on partiotion of topic
+    - name: consumer_group.offset
+      type: long
+      description: >
+        Current offset of consumer group on partiotion of topic
 
     - name: group
       type: keyword
       descrition: >
         Name of consumer group for which topic statistics gathered
 
-    - name: topic
-      type: dict
-      fields:
-        - name: topic
-          type: keyword
-          description: >
-            Name of topic
+    - name: topic.name
+      type: keyword
+      description: >
+        Name of topic
 
-        - name: lag
-          type: long
-          description: >
-            Total lag for topic 
+    - name: topic.lag
+      type: long
+      description: >
+        Total lag for topic
 
-        - name: partition
-          type: integer
-          description: >
-            Num of partition on topic
+    - name: topic.partition
+      type: integer
+      description: >
+        Num of partition on topic
 
-        - name: size
-          type: long
-          description: >
-            Amount of messages in topic
+    - name: topic.size
+      type: long
+      description: >
+        Amount of messages in topic
