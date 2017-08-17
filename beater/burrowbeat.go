@@ -84,18 +84,18 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 			resp, err := http.Get(endpoint)
 			if err != nil {
 				fmt.Errorf("Error during http GET: %v", err)
+			} else {
+				var burrow map[string]interface{}
+				out, _ := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				if err = json.Unmarshal(out, &burrow); err != nil {
+					fmt.Errorf("Error during unmarshal: %v", err)
+				} else {
+					bt.getConsumerGroupStatus(burrow)
+					bt.getTopicStatuses(burrow)
+				}
 			}
-
-			var burrow map[string]interface{}
-			out, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-
-			if err = json.Unmarshal(out, &burrow); err != nil {
-				fmt.Errorf("Error during unmarshal: %v", err)
-			}
-
-			bt.getConsumerGroupStatus(burrow)
-			bt.getTopicStatuses(burrow)
 		}
 	}
 }
