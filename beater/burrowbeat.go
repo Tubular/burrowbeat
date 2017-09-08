@@ -41,6 +41,32 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	return bt, nil
 }
 
+func (bt *Burrowbeat) getEndpoint(endpoint string) (content map[string]interface{}, err error) {
+	timeout := time.Duration(5 * time.Second)
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	url := "http://" + bt.host + ":" + bt.port + "/v2/kafka/" + endpoint
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return content, err
+	}
+
+	req.Host = bt.host
+	resp, err := client.Do(req)
+	if err != nil {
+		return content, err
+	}
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	err = json.Unmarshal(body, &content)
+
+	return content, err
+}
+
 func (bt *Burrowbeat) Run(b *beat.Beat) error {
 	logp.Info("burrowbeat is running! Hit CTRL-C to stop it.")
 
@@ -59,19 +85,10 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 
 		logp.Debug("main", "Running tick")
 		groups := bt.groups
-		endpoint_base := "http://" + bt.host + ":" + bt.port + "/v2/kafka/" + bt.cluster
 		if len(groups) == 0 {
-			endpoint := endpoint_base + "/consumer"
-			resp, err := http.Get(endpoint)
+			burrow_groups, err := bt.getEndpoint(bt.cluster)
 			if err != nil {
-				fmt.Errorf("Error during http GET: %v", err)
-			}
-			var burrow_groups map[string]interface{}
-			out, _ := ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-
-			if err = json.Unmarshal(out, &burrow_groups); err != nil {
-				fmt.Errorf("Error during unmarshal: %v", err)
+				fmt.Errorf("Got an error: %v", err)
 			} else {
 				for _, group := range burrow_groups["consumers"].([]interface{}) {
 					groups = append(groups, group.(string))
@@ -80,21 +97,12 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 		}
 
 		for _, group := range groups {
-			endpoint := endpoint_base + "/consumer/" + group + "/lag"
-			resp, err := http.Get(endpoint)
+			consumer_group, err := bt.getEndpoint(bt.cluster + "/consumer/" + group + "/lag")
 			if err != nil {
-				fmt.Errorf("Error during http GET: %v", err)
+				fmt.Errorf("Got an error: %v", err)
 			} else {
-				var burrow map[string]interface{}
-				out, _ := ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-
-				if err = json.Unmarshal(out, &burrow); err != nil {
-					fmt.Errorf("Error during unmarshal: %v", err)
-				} else {
-					bt.getConsumerGroupStatus(burrow)
-					bt.getTopicStatuses(burrow)
-				}
+				bt.getConsumerGroupStatus(consumer_group)
+				bt.getTopicStatuses(consumer_group)
 			}
 		}
 	}
