@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
@@ -97,13 +96,7 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 		}
 
 		for _, group := range groups {
-			consumer_group, err := bt.getEndpoint(bt.cluster + "/consumer/" + group + "/lag")
-			if err != nil {
-				fmt.Errorf("Got an error: %v", err)
-			} else {
-				bt.getConsumerGroupStatus(consumer_group)
-				bt.getTopicStatuses(consumer_group)
-			}
+			bt.getConsumerGroupStatus(group)
 		}
 	}
 }
@@ -113,76 +106,104 @@ func (bt *Burrowbeat) Stop() {
 	close(bt.done)
 }
 
-func (bt *Burrowbeat) getConsumerGroupStatus(burrow map[string]interface{}) {
-	status := burrow["status"].(map[string]interface{})
-	group := status["group"].(string)
-	partitions := status["partitions"].([]interface{})
-	for _, partition := range partitions {
-		partition := partition.(map[string]interface{})
-		offset := partition["end"].(map[string]interface{})
+func (bt *Burrowbeat) getConsumerGroupTopics(group string) (topics []string, err error) {
+	response, err := bt.getEndpoint(bt.cluster + "/consumer/" + group + "/topic")
 
-		consumer_group := common.MapStr{
-			"name":      group,
-			"topic":     partition["topic"].(string),
-			"partition": int(partition["partition"].(float64)),
-			"offset":    int64(offset["offset"].(float64)),
-			"lag":       int64(offset["lag"].(float64)),
-		}
-
-		event := common.MapStr{
-			"@timestamp":     common.Time(time.Now()),
-			"type":           "consumer_group",
-			"cluster":        bt.cluster,
-			"consumer_group": consumer_group,
-		}
-
-		bt.client.PublishEvent(event)
+	if err != nil {
+		return topics, err
 	}
-	logp.Info("Consumer group events sent")
+
+	for _, topic := range response["topics"].([]interface{}) {
+		topics = append(topics, topic.(string))
+	}
+
+	return topics, err
 }
 
-func (bt *Burrowbeat) getTopicStatuses(burrow map[string]interface{}) {
-	status := burrow["status"].(map[string]interface{})
-	group := status["group"].(string)
-	partitions := status["partitions"].([]interface{})
+func (bt *Burrowbeat) getConsumerGroupOffets(group string, topic string) (offsets []int64, err error) {
+	response, err := bt.getEndpoint(bt.cluster + "/consumer/" + group + "/topic/" + topic)
 
-	var topic_names []string
-	var topic_sizes, topic_partitions, topic_lags []int
-	current_topic := 0
-
-	for i, _ := range partitions {
-		partition := partitions[i].(map[string]interface{})
-		end := partition["end"].(map[string]interface{})
-		tmp_name := partition["topic"].(string)
-		tmp_offset := int(end["offset"].(float64))
-		tmp_lag := int(end["lag"].(float64))
-
-		if i == 0 {
-			topic_names = append(topic_names, tmp_name)
-			topic_sizes = append(topic_sizes, tmp_offset)
-			topic_partitions = append(topic_partitions, 1)
-			topic_lags = append(topic_lags, tmp_lag)
-		} else {
-			if strings.Compare(tmp_name, topic_names[len(topic_names)-1]) != 0 {
-				topic_names = append(topic_names, tmp_name)
-				topic_sizes = append(topic_sizes, tmp_offset)
-				topic_partitions = append(topic_partitions, 1)
-				topic_lags = append(topic_lags, tmp_lag)
-				current_topic++
-			} else {
-				topic_sizes[current_topic] += tmp_offset
-				topic_partitions[current_topic] += 1
-				topic_lags[current_topic] += tmp_lag
-			}
-		}
+	if err != nil {
+		return offsets, err
 	}
 
-	for i, name := range topic_names {
-		topic := common.MapStr{
-			"name":       name,
-			"size":       topic_sizes[i],
-			"partitions": topic_partitions[i],
-			"lag":        topic_lags[i],
+	for _, offset := range response["offsets"].([]interface{}) {
+		offsets = append(offsets, int64(offset.(float64)))
+	}
+
+	return offsets, err
+}
+
+func (bt *Burrowbeat) getTopicOffets(topic string) (offsets []int64, err error) {
+	response, err := bt.getEndpoint(bt.cluster + "/topic/" + topic)
+
+	if err != nil {
+		return offsets, err
+	}
+
+	for _, offset := range response["offsets"].([]interface{}) {
+		offsets = append(offsets, int64(offset.(float64)))
+	}
+
+	return offsets, err
+}
+
+func (bt *Burrowbeat) getConsumerGroupStatus(group string) {
+	topics, err := bt.getConsumerGroupTopics(group)
+
+	if err != nil {
+		logp.Err("Failed to get topics for %v consumer group.\n Error: %v", group, err)
+		return
+	}
+
+	for _, topic := range topics {
+		logp.Debug("Getting info for topic %v", topic)
+		topic_offsets, err := bt.getTopicOffets(topic)
+		if err != nil {
+			logp.Err("Failed to get offsets for %v topic:\n %v", topic, err)
+			continue
+		}
+
+		consumer_offsets, err := bt.getConsumerGroupOffets(group, topic)
+		if err != nil {
+			logp.Err("Failed to get offsets for %v consumer_group and %v topic:\n %v", group, topic, err)
+			continue
+		}
+
+		topic_partitions := len(topic_offsets)
+		var topic_lag, topic_size int64 = 0, 0
+
+		for i, _ := range topic_offsets {
+			partition_lag := topic_offsets[i] - consumer_offsets[i]
+
+			if partition_lag < 0 {
+				partition_lag = 0
+			}
+
+			consumer_group := common.MapStr{
+				"name":      group,
+				"topic":     topic,
+				"partition": i,
+				"offset":    consumer_offsets[i],
+				"lag":       partition_lag,
+			}
+			event := common.MapStr{
+				"@timestamp":     common.Time(time.Now()),
+				"type":           "consumer_group",
+				"cluster":        bt.cluster,
+				"consumer_group": consumer_group,
+			}
+			bt.client.PublishEvent(event)
+
+			topic_lag += partition_lag
+			topic_size += topic_offsets[i]
+		}
+
+		topic_detail := common.MapStr{
+			"name":       topic,
+			"size":       topic_size,
+			"partitions": topic_partitions,
+			"lag":        topic_lag,
 		}
 
 		event := common.MapStr{
@@ -190,9 +211,10 @@ func (bt *Burrowbeat) getTopicStatuses(burrow map[string]interface{}) {
 			"type":       "topic",
 			"cluster":    bt.cluster,
 			"group":      group,
-			"topic":      topic,
+			"topic":      topic_detail,
 		}
 		bt.client.PublishEvent(event)
 		logp.Info("Topic event sent")
+
 	}
 }
