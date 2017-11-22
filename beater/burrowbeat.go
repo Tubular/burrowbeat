@@ -85,7 +85,7 @@ func (bt *Burrowbeat) Run(b *beat.Beat) error {
 		logp.Debug("main", "Running tick")
 		groups := bt.groups
 		if len(groups) == 0 {
-			burrow_groups, err := bt.getEndpoint(bt.cluster)
+			burrow_groups, err := bt.getEndpoint(bt.cluster + "/consumer")
 			if err != nil {
 				fmt.Errorf("Got an error: %v", err)
 			} else {
@@ -174,6 +174,12 @@ func (bt *Burrowbeat) getConsumerGroupStatus(group string) {
 		var topic_lag, topic_size int64 = 0, 0
 
 		for i, _ := range topic_offsets {
+
+			if topic_offsets[i] < 0 || consumer_offsets[i] < 0 {
+				// if offset for topic or consumer group is negative ignore it
+				continue
+			}
+
 			partition_lag := topic_offsets[i] - consumer_offsets[i]
 
 			if partition_lag < 0 {
